@@ -1,0 +1,65 @@
+// Hooks to add to ~/.claude/settings.json
+//
+// Merge these into your existing hooks object — don't replace the whole file.
+// Each hook calls claude-hooks.sh with the event name. $TMUX_PANE is set
+// automatically by tmux so per-window state tracking works without any
+// extra configuration.
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude-tmux/bin/claude-hooks.sh pre-tool"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude-tmux/bin/claude-hooks.sh post-tool"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude-tmux/bin/claude-hooks.sh notification"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude-tmux/bin/claude-hooks.sh stop"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude-tmux/bin/claude-hooks.sh session-start"
+          }
+        ]
+      }
+    ]
+  }
+}
