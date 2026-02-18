@@ -3,33 +3,13 @@
 #
 # State is keyed by $TMUX_PANE (e.g. %3) so multiple Claude sessions in
 # different windows don't stomp each other.
-#
-# States:
-#   idle           — Claude is running but not actively doing anything
-#   working        — Claude is generating output or using tools
-#   waiting_input  — Claude is waiting for user input or confirmation
-#   error          — An error occurred
-#   stopped        — Claude Code process has exited
-#
-# Usage:
-#   source bin/claude-state.sh
-#   claude_state_set working "Running tests..."
-#   claude_state_set waiting_input "Confirm file edit?"
-#   claude_state_stop
 
 set -euo pipefail
 
-# Key state file by TMUX_PANE so each window has independent state.
 _PANE_ID="${TMUX_PANE:-global}"
 CLAUDE_STATE_FILE="${CLAUDE_STATE_FILE:-/tmp/claude-state-${_PANE_ID}.json}"
 
-declare -A _CLAUDE_VALID_STATES=(
-  [idle]="Idle"
-  [working]="Working..."
-  [waiting_input]="Waiting for input"
-  [error]="Error"
-  [stopped]="Stopped"
-)
+_valid_states="idle working waiting_input error stopped"
 
 _claude_state_timestamp() {
   date -u +"%Y-%m-%dT%H:%M:%SZ"
@@ -40,27 +20,39 @@ _claude_state_write_json() {
   local message="$2"
   local ts
   ts="$(_claude_state_timestamp)"
-
   printf '{\n  "state": "%s",\n  "message": "%s",\n  "timestamp": "%s",\n  "pid": %d\n}\n' \
     "$state" "$message" "$ts" "$$" > "$CLAUDE_STATE_FILE"
 }
 
+_default_message_for_state() {
+  case "$1" in
+    idle)          echo "Idle" ;;
+    working)       echo "Working..." ;;
+    waiting_input) echo "Waiting for input" ;;
+    error)         echo "Error" ;;
+    stopped)       echo "Stopped" ;;
+    *)             echo "$1" ;;
+  esac
+}
+
 claude_state_set() {
   local state="${1:?Usage: claude_state_set <state> [message]}"
-  local message="${2:-${_CLAUDE_VALID_STATES[$state]:-$state}}"
+  local message="${2:-$(_default_message_for_state "$state")}"
 
-  if [[ -z "${_CLAUDE_VALID_STATES[$state]+x}" ]]; then
-    echo "claude-state: unknown state '$state'" >&2
-    echo "claude-state: valid states: ${!_CLAUDE_VALID_STATES[*]}" >&2
-    return 1
-  fi
+  case " $_valid_states " in
+    *" $state "*) ;;
+    *)
+      echo "claude-state: unknown state '$state'" >&2
+      echo "claude-state: valid states: $_valid_states" >&2
+      return 1
+      ;;
+  esac
 
   _claude_state_write_json "$state" "$message"
 }
 
 claude_state_stop() {
-  local message="${1:-Stopped}"
-  _claude_state_write_json "stopped" "$message"
+  _claude_state_write_json "stopped" "${1:-Stopped}"
 }
 
 claude_state_read() {
@@ -71,7 +63,7 @@ claude_state_read() {
   fi
 }
 
-# Tiny JSON parser — no jq dependency needed for simple flat objects.
+# Tiny JSON parser — no jq dependency.
 claude_state_get_field() {
   local field="${1:?Usage: claude_state_get_field <field>}"
   claude_state_read | sed -n "s/.*\"$field\"[[:space:]]*:[[:space:]]*\"\{0,1\}\([^\",$]*\)\"\{0,1\}.*/\1/p" | head -1
