@@ -57,8 +57,6 @@ bg="$(_state_bg "$state")"
 fg="$(_state_fg "$state")"
 icon="$(_state_icon "$state")"
 
-if [[ -n "${TMUX:-}" ]]; then
-  tmux set-option -g status-style "bg=$bg,fg=$fg" 2>/dev/null || true
-fi
-
-echo " ${icon} ${message} "
+# Output an inline-colored segment — no global tmux style mutation.
+# tmux interprets #[...] color codes in status-right output.
+printf '#[bg=%s,fg=%s] %s %s #[default]' "$bg" "$fg" "$icon" "$message"
